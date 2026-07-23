@@ -1,0 +1,958 @@
+<!-- 
+  atakan-portfolio-cms | MIT License
+  Copyright (c) 2026 Atakan Altın
+  https://github.com/atakanaltin/atakan-portfolio-cms
+-->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>atakan-portfolio-cms</title>
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@300;400;600;700&family=Space+Grotesk:wght@300;400;600;700&display=swap">
+  <style>
+    :root {
+      --admin-bg: #090d16; --admin-card: #111726; --admin-card-hover: #182238;
+      --admin-accent: #6366f1; --admin-accent-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      --admin-accent-glow: rgba(99, 102, 241, 0.25); --admin-border: rgba(255, 255, 255, 0.1);
+      --admin-border-active: rgba(99, 102, 241, 0.6); --admin-text: #f3f4f6; --admin-muted: #9ca3af;
+      --input-bg: #050810; --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+      --transition-speed: 0.2s;
+    }
+
+    body.admin-light {
+      --admin-bg: #f8fafc; --admin-card: #ffffff; --admin-card-hover: #f1f5f9;
+      --admin-accent: #4f46e5; --admin-accent-gradient: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      --admin-accent-glow: rgba(79, 70, 229, 0.15); --admin-border: #cbd5e1;
+      --admin-border-active: rgba(79, 70, 229, 0.5); --admin-text: #0f172a; --admin-muted: #64748b;
+      --input-bg: #f1f5f9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--admin-bg); color: var(--admin-text); height: 100vh; overflow: hidden; transition: background var(--transition-speed), color var(--transition-speed); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--admin-border); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--admin-muted); }
+
+    .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; position: relative; }
+    
+    .sidebar { width: 540px; min-width: 320px; max-width: 850px; background: var(--admin-card); border-right: 1px solid var(--admin-border); display: flex; flex-direction: column; height: 100vh; z-index: 2; flex-shrink: 0; transition: background var(--transition-speed); }
+    
+    .resizer { width: 8px; background: var(--admin-border); cursor: col-resize; position: relative; z-index: 100; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; transition: background 0.2s; }
+    .resizer::after { content: ''; width: 2px; height: 28px; background: var(--admin-muted); border-radius: 2px; opacity: 0.6; }
+    .resizer:hover, .resizer.is-dragging { background: var(--admin-accent); }
+    .resizer:hover::after, .resizer.is-dragging::after { background: #ffffff; opacity: 1; }
+    
+    .toggle-collapse-btn { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; background: var(--admin-card); border: 1px solid var(--admin-border); color: var(--admin-text); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; z-index: 101; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all var(--transition-speed); }
+    .toggle-collapse-btn:hover { border-color: var(--admin-accent); color: var(--admin-accent); transform: translateX(-50%) scale(1.1); }
+
+    .sidebar-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--admin-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.05); }
+    .sidebar-header h2 { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.3px; display: flex; align-items: center; gap: 0.5rem; }
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+    
+    .icon-btn { background: var(--input-bg); border: 1px solid var(--admin-border); color: var(--admin-text); padding: 0.5rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all var(--transition-speed); }
+    .icon-btn:hover { border-color: var(--admin-accent); color: var(--admin-accent); }
+
+    .nav-tabs-wrapper { padding: 0.75rem 1rem; border-bottom: 1px solid var(--admin-border); background: var(--admin-bg); }
+    .nav-tabs { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { background: transparent; border: 1px solid transparent; color: var(--admin-muted); padding: 0.6rem 0.9rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border-radius: var(--radius-sm); white-space: nowrap; transition: all var(--transition-speed); }
+    .tab-btn:hover { color: var(--admin-text); background: var(--admin-card-hover); }
+    .tab-btn.active { color: #fff; background: var(--admin-accent-gradient); box-shadow: 0 4px 12px var(--admin-accent-glow); }
+
+    .tab-content-area { padding: 1.5rem; overflow-y: auto; flex: 1; scroll-behavior: smooth; }
+    .tab-pane { display: none; animation: fadeIn 0.3s ease-out forwards; opacity: 0; transform: translateY(5px); }
+    .tab-pane.active { display: block; }
+    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { margin-bottom: 1.2rem; }
+    label { display: block; font-size: 0.7rem; font-weight: 800; color: var(--admin-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="text"], input[type="email"], input[type="url"], input[type="file"], textarea, select { width: 100%; background: var(--input-bg); border: 1px solid var(--admin-border); border-radius: var(--radius-md); padding: 0.75rem 1rem; color: var(--admin-text); font-size: 0.85rem; font-weight: 500; transition: border-color var(--transition-speed), box-shadow var(--transition-speed); }
+    input[type="text"]:focus, textarea:focus, select:focus, input[type="url"]:focus, input[type="email"]:focus { border-color: var(--admin-accent); outline: none; box-shadow: 0 0 0 3px var(--admin-accent-glow); }
+    input[type="color"] { width: 100%; height: 42px; border: 1px solid var(--admin-border); border-radius: var(--radius-md); cursor: pointer; background: var(--input-bg); padding: 4px; }
+    textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+    .block-item { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; background: var(--input-bg); border-radius: var(--radius-md); border: 1px solid var(--admin-border); margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: grab; transition: border-color var(--transition-speed); }
+    .block-item:hover { border-color: var(--admin-border-active); }
+    .block-item.dragging { opacity: 0.5; border: 2px dashed var(--admin-accent); }
+    .drag-handle { color: var(--admin-muted); margin-right: 0.75rem; cursor: grab; font-size: 1.1rem; }
+
+    .tags-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .tag-pill { background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); color: var(--admin-text); padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .tag-pill span { cursor: pointer; color: var(--admin-muted); font-weight: bold; transition: color var(--transition-speed); }
+    .tag-pill span:hover { color: #f43f5e; }
+
+    .btn { background: var(--admin-accent-gradient); color: #fff; font-weight: 700; padding: 0.75rem 1.25rem; border: none; border-radius: var(--radius-md); cursor: pointer; width: 100%; font-size: 0.85rem; box-shadow: 0 4px 15px var(--admin-accent-glow); display: flex; justify-content: center; align-items: center; gap: 0.5rem; transition: all var(--transition-speed); }
+    .btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 6px 20px var(--admin-accent-glow); }
+    .btn:active { transform: translateY(1px); }
+    .btn-secondary { background: var(--input-bg); border: 1px solid var(--admin-border); color: var(--admin-text); box-shadow: none; }
+    .btn-secondary:hover { background: var(--admin-card-hover); border-color: var(--admin-muted); }
+    .btn-sm { width: auto; padding: 0.5rem 0.9rem; font-size: 0.75rem; }
+
+    .sidebar-footer { padding: 0.75rem 1.5rem; border-top: 1px solid var(--admin-border); background: rgba(0,0,0,0.1); font-size: 0.75rem; color: var(--admin-muted); display: flex; justify-content: space-between; align-items: center; }
+    .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+    .status-dot-sm { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+
+    .preview-panel { flex: 1; background: #000; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
+    .preview-bar { background: var(--admin-card); padding: 1.2rem 1.5rem; font-size: 0.8rem; font-weight: 700; color: var(--admin-muted); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--admin-border); }
+    .preview-status { display: flex; align-items: center; gap: 0.5rem; }
+    .device-switcher { display: flex; gap: 0.25rem; background: var(--input-bg); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--admin-border); }
+    .device-btn { background: transparent; border: none; color: var(--admin-muted); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; font-weight: 700; transition: all var(--transition-speed); }
+    .device-btn:hover { color: var(--admin-text); }
+    .device-btn.active { background: var(--admin-accent); color: #fff; }
+    
+    body.admin-light .iframe-wrapper { background: radial-gradient(circle at center, #cbd5e1 0%, #94a3b8 100%); }
+    
+    .iframe-wrapper {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;                /* masaüstünde ortala */
+      background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+      padding: 1.5rem;
+      overflow: auto;                    /* mobil/tablet simülasyonunda scroll çıksın */
+      transition: background var(--transition-speed);
+    }
+    
+    iframe {
+      width: 100%;                       /* masaüstünde tam genişlik */
+      height: 100%;                      /* masaüstünde tam yükseklik */
+      border: none;
+      border-radius: var(--radius-lg);
+      transition: width 0.3s, height 0.3s;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      background: #fff;
+    }
+    
+    /* Mobil simülasyon */
+    iframe.mobile-view {
+      width: 375px;
+      height: 812px;
+      border-radius: 36px;
+      border: 12px solid #1f2937;
+      box-shadow: 0 0 0 2px #4b5563, 0 25px 50px -12px rgba(0,0,0,0.5);
+      overflow-y: auto;
+    }
+    
+    /* Tablet simülasyon */
+    iframe.tablet-view {
+      width: 768px;
+      height: 1024px;
+      border-radius: 24px;
+      border: 12px solid #1f2937;
+      box-shadow: 0 0 0 2px #4b5563, 0 25px 50px -12px rgba(0,0,0,0.5);
+      overflow-y: auto;
+    }
+
+    .avatar-preview { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--admin-accent); margin-top: 0.5rem; box-shadow: 0 0 12px var(--admin-accent-glow); }
+    
+    .welcome-overlay { position: fixed; inset: 0; background: rgba(3,7,18,0.85); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+    .welcome-overlay.open { opacity: 1; pointer-events: auto; }
+    .welcome-card { background: var(--admin-card); border: 1px solid var(--admin-border); border-radius: var(--radius-lg); padding: 2.5rem; max-width: 480px; text-align: center; color: var(--admin-text); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; }
+    .welcome-overlay.open .welcome-card { transform: translateY(0); }
+    .welcome-card h2 { font-size: 1.5rem; margin-bottom: 0.75rem; font-weight: 800; }
+    .welcome-card p { font-size: 0.9rem; color: var(--admin-muted); margin-bottom: 1.5rem; line-height: 1.6; }
+    .step-icons { font-size: 2.5rem; margin-bottom: 1rem; }
+
+    .guide-step { background: var(--input-bg); border-left: 4px solid var(--admin-accent); border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1rem; display: flex; gap: 1rem; align-items: flex-start; }
+    .step-number { background: var(--admin-accent-gradient); color: #fff; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; flex-shrink: 0; }
+    .step-content h4 { font-size: 0.9rem; margin-bottom: 0.25rem; color: var(--admin-text); }
+    .step-content p { font-size: 0.8rem; color: var(--admin-muted); line-height: 1.5; }
+    
+    .help-tip { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-md); padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--admin-accent); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+
+    .list-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--input-bg); border: 1px solid var(--admin-border); border-radius: var(--radius-md); margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; }
+    .list-item:hover { border-color: var(--admin-border-active); }
+    .list-actions { display: flex; gap: 0.4rem; }
+    .list-actions button { background: transparent; border: 1px solid var(--admin-border); color: var(--admin-muted); padding: 0.3rem 0.6rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; transition: all var(--transition-speed); }
+    .list-actions button:hover { border-color: var(--admin-accent); color: var(--admin-accent); }
+    .list-actions button.delete-btn:hover { border-color: #f43f5e; color: #f43f5e; }
+
+    .code-block { background: #050810; border: 1px solid var(--admin-border); border-radius: var(--radius-md); padding: 1.25rem; font-family: 'Fira Code', monospace; font-size: 0.75rem; color: #e2e8f0; overflow: auto; max-height: 55vh; white-space: pre-wrap; word-break: break-all; }
+    .log-item { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8rem; color: var(--admin-muted); }
+    .log-item span { color: var(--admin-accent); font-weight: 600; }
+    .badge-beta {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+<div id="welcomeModal" class="welcome-overlay">
+  <div class="welcome-card">
+    <div class="step-icons">👋 🚀</div>
+    <h2>Kendi Web Siteni Hemen Kur!</h2>
+    <p>Bu panel sayesinde <strong>hiç kod yazmadan</strong> profesyonel bir portfolyo sitesi oluşturabilirsin.</p>
+    <button class="btn" onclick="closeWelcome()" style="margin-top:1rem;">Başlayalım!</button>
+  </div>
+</div>
+
+<div class="app-container" id="appContainer">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>
+        atakan-portfolio-cms
+        <span class="badge-beta">Beta</span>
+      </h2>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toggleAdminTheme()" title="Temayı Değiştir">🌗</button>
+        <button class="icon-btn" onclick="showTab('guide')" title="Nasıl Kullanılır?">❓</button>
+      </div>
+    </div>
+    <div class="nav-tabs-wrapper">
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="showTab('content')">📝 İçerik</button>
+        <button class="tab-btn" onclick="showTab('design')">🎨 Tema</button>
+        <button class="tab-btn" onclick="showTab('code')">🔍 Kod</button>
+        <button class="tab-btn" onclick="showTab('backup')">💾 Araçlar</button>
+        <button class="tab-btn" onclick="showTab('publish')">🚀 Yayınla</button>
+      </div>
+    </div>
+
+    <div class="tab-content-area">
+      <!-- İÇERİK SEKMESİ -->
+      <div id="tab-content" class="tab-pane active">
+        <div class="help-tip">💡 <span>Profil, yetenekler, projeler, deneyimler ve politikalarını buradan yönetebilirsin.</span></div>
+        <div id="sectionFormsContainer"></div>
+        <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+            <label style="font-size:0.95rem; color:var(--admin-text);">🔄 Bölüm Sıralaması (Sürükle Bırak)</label>
+            <div id="blockListUI" style="margin-top:0.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- TEMA SEKMESİ -->
+      <div id="tab-design" class="tab-pane">
+        <div class="help-tip">🎨 <span>Hazır tema seç veya renkleri tamamen kendine göre özelleştir.</span></div>
+        <div class="form-group">
+            <label>Hazır Temalar</label>
+            <select id="presetSelect" onchange="applyPreset()">
+                <option value="glass-dark">🌌 Glassmorphism Dark</option>
+                <option value="cyber">🟢 Cyberpunk</option>
+                <option value="light">☀️ Clean Light</option>
+                <option value="ocean">🌊 Ocean</option>
+                <option value="sunset">🌅 Sunset</option>
+                <option value="forest">🌿 Forest</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Yazı Tipi</label>
+            <select id="fontSelect" onchange="updateCMS()">
+                <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+                <option value="Inter">Inter</option>
+                <option value="Fira Code">Fira Code</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Bölümler Arası Boşluk</label>
+            <select id="sectionSpacing" onchange="updateCMS()">
+                <option value="2rem">Dar (2rem)</option>
+                <option value="3rem">Normal (3rem)</option>
+                <option value="3.5rem" selected>Geniş (3.5rem)</option>
+                <option value="5rem">Çok Geniş (5rem)</option>
+            </select>
+        </div>
+        <div class="form-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="form-group"><label>Arka Plan</label><input type="color" id="bgColor" oninput="updateCMS()"></div>
+          <div class="form-group"><label>Kart Rengi</label><input type="color" id="cardColor" oninput="updateCMS()"></div>
+          <div class="form-group"><label>Vurgu</label><input type="color" id="accentColor" oninput="updateCMS()"></div>
+          <div class="form-group"><label>Metin</label><input type="color" id="textColor" oninput="updateCMS()"></div>
+        </div>
+      </div>
+
+      <!-- KOD SEKMESİ -->
+      <div id="tab-code" class="tab-pane">
+        <div class="help-tip">🔍 <span>Oluşturulan nihai HTML kaynak kodunu ve değişiklik geçmişini buradan görebilirsin.</span></div>
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+          <button class="btn btn-sm btn-secondary" onclick="copySourceCode()">📋 Kodu Kopyala</button>
+          <button class="btn btn-sm btn-secondary" onclick="refreshCodeView()">🔄 Kodu Yenile</button>
+        </div>
+        <div class="code-block" id="sourceCodeView"></div>
+        <h4 style="margin-top:1.5rem; font-size:0.9rem; color:var(--admin-text);">📋 Değişiklik Geçmişi</h4>
+        <div id="changeLogContainer" style="max-height:200px; overflow-y:auto; margin-top:0.5rem; border:1px solid var(--admin-border); border-radius:var(--radius-md);"></div>
+      </div>
+
+      <!-- REHBER SEKMESİ -->
+      <div id="tab-guide" class="tab-pane">
+        <div class="guide-step"><div class="step-number">1</div><div class="step-content"><h4>📝 İçerik Yönetimi</h4><p>Adını, yeteneklerini, projelerini ve deneyimlerini "İçerik" sekmesinden eksiksiz doldur.</p></div></div>
+        <div class="guide-step"><div class="step-number">2</div><div class="step-content"><h4>🎨 Temayı Ayarla</h4><p>Site tasarımını hazır temalarla veya özel renklerle kişiselleştir.</p></div></div>
+        <div class="guide-step"><div class="step-number">3</div><div class="step-content"><h4>💾 Verilerini Yedekle</h4><p>Yedek sekmesinden JSON dosyası indirip geri yükleyebilirsin.</p></div></div>
+        <div class="guide-step"><div class="step-number">4</div><div class="step-content"><h4>🚀 Dünyaya Açıl</h4><p>ZIP indir, PDF CV oluştur veya GitHub Pages'e yükle.</p></div></div>
+      </div>
+
+      <!-- YEDEK SEKMESİ -->
+      <div id="tab-backup" class="tab-pane">
+        <div class="help-tip">💾 <span>Tüm ayarlarını ve verilerini bilgisayarına güvenle indirebilir ve daha sonra yükleyebilirsin.</span></div>
+        <button class="btn" onclick="exportJSONBackup()">📥 Tüm Veriyi JSON Olarak İndir</button>
+        <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+            <label style="font-size:0.95rem; color:var(--admin-text);">Yedek Yükle (İçe Aktar)</label>
+            <input type="file" accept=".json" onchange="importJSONBackup(event)">
+        </div>
+        <div style="margin-top:3rem; padding-top:1rem; border-top:1px dashed #f43f5e;">
+            <button class="btn btn-secondary" style="color:#f43f5e; border-color:rgba(244,63,94,0.3);" onclick="resetCMSData()">⚠️ Tüm Sistemi Sıfırla</button>
+        </div>
+      </div>
+
+      <!-- YAYINLA SEKMESİ -->
+      <div id="tab-publish" class="tab-pane">
+        <div class="help-tip">🚀 <span>Portfolyonu dışa aktar veya internette yayınla.</span></div>
+        <button class="btn" style="margin-bottom:1rem; background:linear-gradient(135deg,#10b981,#059669);" onclick="downloadZipPackage()">📦 Siteyi ZIP Olarak İndir</button>
+        <button class="btn" style="margin-bottom:2rem; background:linear-gradient(135deg,#f59e0b,#d97706);" onclick="downloadCVPDF()">📄 Profesyonel CV Olarak İndir (PDF)</button>
+        
+        <div style="background:var(--input-bg); border:1px solid var(--admin-border); padding:1.5rem; border-radius:var(--radius-md);">
+          <h4 style="font-size:0.95rem; margin-bottom:1rem;">GitHub Pages İle Yayınla</h4>
+          <p style="font-size:0.75rem; color:var(--admin-muted); margin-bottom:1rem;">Kişisel erişim belirteci (Classic Token) ile doğrudan kendi GitHub hesabına yükle.</p>
+          <div class="form-group"><label>GitHub Username</label><input type="text" id="ghUser" placeholder="atakan9v"></div>
+          <div class="form-group"><label>Personal Access Token</label><input type="text" id="ghToken" placeholder="ghp_xxxxxxxxxxxx"></div>
+          <button class="btn" onclick="deployToGH()">🚀 Hemen Yayınla</button>
+          <div id="logArea" style="font-size:0.8rem; margin-top:1rem; font-weight:600; padding:0.5rem; border-radius:var(--radius-sm);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator"><div class="status-dot-sm"></div><span id="saveStatusText">Kaydedildi</span></div>
+      <span id="dataSizeText">0.0 KB</span>
+    </div>
+  </div>
+
+  <div class="resizer" id="resizer">
+      <button class="toggle-collapse-btn" id="toggleCollapseBtn" onclick="toggleSidebarCollapse(event)">◀</button>
+  </div>
+  
+  <div class="preview-panel">
+    <div class="preview-bar">
+      <div class="preview-status"><div class="status-dot-sm" style="background:#3b82f6; box-shadow:0 0 8px #3b82f6;"></div><span>CANLI ÖNİZLEME</span></div>
+      <div class="device-switcher">
+        <button class="device-btn active" onclick="setDevice('desktop', this)" title="Masaüstü">🖥️</button>
+        <button class="device-btn" onclick="setDevice('tablet', this)" title="Tablet">📱</button>
+        <button class="device-btn" onclick="setDevice('mobile', this)" title="Mobil">📲</button>
+      </div>
+    </div>
+    <div class="iframe-wrapper"><iframe id="cmsPreview" scrolling="auto"></iframe></div>
+  </div>
+</div>
+
+<script>
+  // --- YARDIMCI FONKSİYONLAR ---
+  function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag]));
+  }
+
+  const defaultData = {
+    seo: { title: "Atakan Altın - Portfolio", desc: "Full-Stack Developer Portfolyo Sitesi." },
+    gaId: "", web3Key: "",
+    profile: { avatar: "https://atakan9v.github.io/assets/img/pp.png" },
+    sectionOrder: [
+      { id: 'hero', name: 'Hero (Giriş)', active: true },
+      { id: 'social', name: 'Sosyal Medya', active: true },
+      { id: 'stats', name: 'İstatistikler', active: true },
+      { id: 'skills', name: 'Yetenekler', active: true },
+      { id: 'projects', name: 'Projeler', active: true },
+      { id: 'experience', name: 'Deneyimler', active: true },
+      { id: 'certificates', name: 'Sertifikalar', active: true },
+      { id: 'contact', name: 'İletişim', active: true },
+      { id: 'footer', name: 'Footer (Politikalar)', active: true }
+    ],
+    content: {
+      fullName: "Atakan Altın", title: "Jr. Full-Stack Developer",
+      bio: "Yüksek performanslı web sistemleri ve mobil uygulamalar geliştiriyorum.",
+      contactEmail: "",
+      skills: ["JavaScript", "Node.js", "React", "HTML/CSS"],
+      socials: [{ platform: "github", url: "https://github.com/atakan9v" }],
+      stats: [
+        { label: "Tamamlanan Proje", value: "15+" },
+        { label: "Mutlu Müşteri", value: "10+" },
+        { label: "Yıllık Deneyim", value: "10+" }
+      ],
+      projects: [
+        { name: "Örnek Proje", desc: "Mobil Oyun, CyberCore: Breach", link: "https://play.google.com/store/apps/details?id=com.deepgap.cybercore", lang: "JavaScript", image: "" }
+      ],
+      experiences: [
+        { title: "Daha Kıdemli Geliştirici", company: "Blabla", startDate: "2026", endDate: "Devam", description: "Modern web uygulamaları geliştirme." },
+        { title: "Kıdemli Geliştirici", company: "Blabla", startDate: "2021", endDate: "2026", description: "Modern web uygulamaları geliştirme." }
+      ],
+      certificates: [
+        { title: "Certified Developer", issuer: "Blabla", date: "2023", link: "" }
+      ],
+      privacyPolicy: 'Buraya "Gizlilik Politikası" metni gelecek.',
+      termsOfService: 'Buraya "Kullanım Koşulları" metni gelecek.'
+    },
+    design: { font: "Plus Jakarta Sans", bgColor: "#030712", cardColor: "#0b0f19", accentColor: "#38bdf8", textColor: "#f9fafb", sectionSpacing: "3.5rem" },
+    customCSS: "", customJS: "",
+    changeLog: []
+  };
+
+  let cmsData = JSON.parse(JSON.stringify(defaultData));
+  let lastSidebarWidth = 540, isCollapsed = false;
+
+  function ensureDataIntegrity() {
+    ['socials', 'projects', 'experiences', 'skills'].forEach(key => {
+      if (!cmsData.content[key]) cmsData.content[key] = [];
+    });
+    if (!cmsData.content.stats) cmsData.content.stats = [...defaultData.content.stats];
+    if (!cmsData.content.certificates) cmsData.content.certificates = [...defaultData.content.certificates];
+    if (!cmsData.design.sectionSpacing) cmsData.design.sectionSpacing = "3.5rem";
+    if (!cmsData.changeLog) cmsData.changeLog = [];
+    ['contactEmail', 'privacyPolicy', 'termsOfService', 'fullName', 'title', 'bio'].forEach(key => {
+      if (cmsData.content[key] === undefined) cmsData.content[key] = defaultData.content[key] || "";
+    });
+    
+    if (!cmsData.sectionOrder || !Array.isArray(cmsData.sectionOrder)) {
+      cmsData.sectionOrder = JSON.parse(JSON.stringify(defaultData.sectionOrder));
+    } else {
+      const existingIds = cmsData.sectionOrder.map(item => item.id);
+      defaultData.sectionOrder.forEach(defItem => {
+        if (!existingIds.includes(defItem.id)) cmsData.sectionOrder.push({ ...defItem });
+      });
+    }
+  }
+
+  function addChangeLogEntry(action) {
+    const time = new Date().toLocaleTimeString('tr-TR');
+    cmsData.changeLog.unshift({ time, action });
+    if (cmsData.changeLog.length > 20) cmsData.changeLog.pop();
+  }
+
+  function closeWelcome() {
+    const modal = document.getElementById('welcomeModal');
+    if (modal) { modal.classList.remove('open'); setTimeout(()=> modal.style.display = 'none', 300); }
+    localStorage.setItem('cms_welcome_seen', 'true');
+  }
+
+  if (localStorage.getItem('cms_welcome_seen') === 'true') {
+    const modal = document.getElementById('welcomeModal');
+    if (modal) modal.style.display = 'none';
+  } else {
+    const modal = document.getElementById('welcomeModal');
+    if (modal) modal.classList.add('open');
+  }
+
+  function initResizerEngine() {
+    const sidebar = document.getElementById('sidebar'), resizer = document.getElementById('resizer'), iframe = document.getElementById('cmsPreview');
+    let isDragging = false;
+    resizer.addEventListener('pointerdown', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      isDragging = true; resizer.classList.add('is-dragging'); resizer.setPointerCapture(e.pointerId);
+      iframe.style.pointerEvents = 'none'; document.body.style.cursor = 'col-resize';
+    });
+    resizer.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      let newWidth = e.clientX;
+      if (newWidth < 320) newWidth = 320; if (newWidth > 850) newWidth = 850;
+      sidebar.style.width = `${newWidth}px`; sidebar.style.display = 'flex';
+      lastSidebarWidth = newWidth; isCollapsed = false; updateCollapseBtnIcon();
+    });
+    const stopDragging = (e) => {
+      if (isDragging) { isDragging = false; resizer.classList.remove('is-dragging'); try { resizer.releasePointerCapture(e.pointerId); } catch(err) {} iframe.style.pointerEvents = 'auto'; document.body.style.cursor = ''; }
+    };
+    resizer.addEventListener('pointerup', stopDragging); resizer.addEventListener('pointercancel', stopDragging);
+    resizer.addEventListener('dblclick', (e) => { if(e.target.tagName!=='BUTTON') toggleSidebarCollapse(e); });
+  }
+
+  function toggleSidebarCollapse(e) {
+    if (e) e.stopPropagation();
+    const sidebar = document.getElementById('sidebar');
+    if (isCollapsed) { sidebar.style.width = `${lastSidebarWidth || 540}px`; sidebar.style.display = 'flex'; isCollapsed = false; }
+    else { lastSidebarWidth = sidebar.offsetWidth || 540; sidebar.style.width = '0px'; sidebar.style.display = 'none'; isCollapsed = true; }
+    updateCollapseBtnIcon();
+  }
+  function updateCollapseBtnIcon() { const btn = document.getElementById('toggleCollapseBtn'); if (btn) btn.innerText = isCollapsed ? '▶' : '◀'; }
+
+  function loadFromLocalStorage() {
+    const saved = localStorage.getItem('cms_data');
+    if (saved) { try { const parsed = JSON.parse(saved); cmsData = { ...defaultData, ...parsed }; } catch(e) { console.error("Parse error"); } }
+    ensureDataIntegrity();
+  }
+
+  function saveToLocalStorage() {
+    const dataStr = JSON.stringify(cmsData);
+    localStorage.setItem('cms_data', dataStr);
+    document.getElementById('dataSizeText').innerText = (new Blob([dataStr]).size / 1024).toFixed(1) + ' KB';
+    const statusText = document.getElementById('saveStatusText');
+    statusText.innerText = 'Kaydediliyor...';
+    setTimeout(() => statusText.innerText = 'Kaydedildi', 500);
+  }
+
+  function showTab(tabName) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const target = document.getElementById(`tab-${tabName}`); if (target) target.classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => { 
+        if (b.innerText.toLowerCase().includes(tabName) || (tabName==='content' && b.innerText.includes('İçerik')) || (tabName==='code' && b.innerText.includes('Kod'))) b.classList.add('active'); 
+    });
+    if (tabName === 'code') refreshCodeView();
+    if (tabName === 'content') renderContentSections();
+  }
+
+  function setDevice(device, btnEl) {
+    const iframe = document.getElementById('cmsPreview');
+    const wrapper = document.querySelector('.iframe-wrapper');
+    
+    document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    
+    iframe.className = '';
+    
+    if (device === 'mobile') {
+      iframe.classList.add('mobile-view');
+      wrapper.style.alignItems = 'flex-start'; // mobilde üste hizala
+    } else if (device === 'tablet') {
+      iframe.classList.add('tablet-view');
+      wrapper.style.alignItems = 'flex-start'; // tablette üste hizala
+    } else {
+      wrapper.style.alignItems = 'center'; // masaüstünde ortala
+    }
+  }
+
+  let dragSrcEl = null;
+  function renderBlockListUI() { 
+    document.getElementById('blockListUI').innerHTML = cmsData.sectionOrder.map((item, idx) => `
+      <div class="block-item" draggable="true" data-index="${idx}" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" ondragend="handleDragEnd(event)">
+        <div>
+            <span class="drag-handle">☰</span>
+            <label style="display:inline; margin:0; text-transform:none; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" ${item.active ? 'checked' : ''} onchange="toggleBlock(${idx})"> ${item.name}
+            </label>
+        </div>
+      </div>`).join(''); 
+  }
+  function handleDragStart(e) { dragSrcEl = e.currentTarget; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+  function handleDragOver(e) { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--admin-accent)'; }
+  function handleDragLeave(e) { e.currentTarget.style.borderColor = ''; }
+  function handleDragEnd(e) { document.querySelectorAll('.block-item').forEach(el => { el.classList.remove('dragging'); el.style.borderColor = ''; }); }
+  function handleDrop(e) { 
+    e.stopPropagation(); e.preventDefault(); e.currentTarget.style.borderColor = '';
+    if (!dragSrcEl) return; 
+    const srcIdx = parseInt(dragSrcEl.getAttribute('data-index')), targetIdx = parseInt(e.currentTarget.getAttribute('data-index')); 
+    if (!isNaN(srcIdx) && !isNaN(targetIdx) && srcIdx !== targetIdx) { 
+        const temp = cmsData.sectionOrder.splice(srcIdx, 1)[0]; 
+        cmsData.sectionOrder.splice(targetIdx, 0, temp); 
+        renderBlockListUI(); 
+        updateCMS(); 
+        renderContentSections();
+    } 
+  }
+  function toggleBlock(idx) { 
+    cmsData.sectionOrder[idx].active = !cmsData.sectionOrder[idx].active; 
+    updateCMS(); 
+    renderContentSections();
+  }
+
+  function renderContentSections() {
+    const container = document.getElementById('sectionFormsContainer');
+    if (!container) return;
+    let html = '';
+    cmsData.sectionOrder.forEach(item => {
+      if (!item.active) return;
+      switch (item.id) {
+        case 'hero':
+          html += `
+            <div class="form-grid">
+              <div class="form-group"><label>Ad Soyad</label><input type="text" id="fullName" oninput="updateCMS()"></div>
+              <div class="form-group"><label>Unvan</label><input type="text" id="userTitle" oninput="updateCMS()"></div>
+            </div>
+            <div class="form-group"><label>Biyografi</label><textarea id="userBio" oninput="updateCMS()"></textarea></div>
+            <div class="form-group"><label>Profil Fotoğrafı</label><input type="file" accept="image/*" onchange="handleAvatarUpload(event)"><img id="avatarPreview" class="avatar-preview" src="" alt="Avatar"></div>
+          `;
+          break;
+        case 'social':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+              <label style="font-size:0.95rem; color:var(--admin-text);">🔗 Sosyal Medya</label>
+              <div id="socialListContainer"></div>
+              <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                  <select id="socialPlatform" style="flex:1;">
+                      <option value="github">GitHub</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="twitter">Twitter</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="website">Web Sitesi</option>
+                  </select>
+                  <input type="url" id="socialUrl" placeholder="https://..." style="flex:2;">
+                  <button class="btn btn-sm" onclick="addSocial()">Ekle</button>
+              </div>
+            </div>
+          `;
+          break;
+        case 'stats':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+              <label style="font-size:0.95rem; color:var(--admin-text);">📊 İstatistikler</label>
+              <div id="statListContainer"></div>
+              <div style="background:var(--input-bg); border:1px solid var(--admin-border); border-radius:var(--radius-md); padding:1.25rem; margin-top:0.5rem;">
+                <input type="hidden" id="editingStatIndex" value="-1">
+                <div class="form-grid">
+                  <div class="form-group"><label>Değer (Örn: 15+)</label><input type="text" id="statValue"></div>
+                  <div class="form-group"><label>Etiket (Örn: Proje)</label><input type="text" id="statLabel"></div>
+                </div>
+                <button class="btn" onclick="saveStat()" id="saveStatBtn">💾 Kaydet</button>
+                <button class="btn btn-secondary" onclick="clearStatForm()" style="margin-top:0.5rem;">✖ Temizle</button>
+              </div>
+            </div>
+          `;
+          break;
+        case 'skills':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+                <label style="font-size:0.95rem; color:var(--admin-text);">💡 Yetenekler</label>
+                <div id="skillsTagsContainer" class="tags-container"></div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                    <input type="text" id="newSkillInput" placeholder="Yeni yetenek..." onkeydown="if(event.key==='Enter') addSkillTag()">
+                    <button class="btn btn-sm" onclick="addSkillTag()">Ekle</button>
+                </div>
+            </div>
+          `;
+          break;
+        case 'projects':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+                <label style="font-size:0.95rem; color:var(--admin-text);">📂 Projeler</label>
+                <div id="projectListContainer"></div>
+                <div style="background:var(--input-bg); border:1px solid var(--admin-border); border-radius:var(--radius-md); padding:1.25rem; margin-top:0.5rem;">
+                    <input type="hidden" id="editingProjectIndex" value="-1">
+                    <div class="form-grid">
+                        <div class="form-group"><label>Proje Adı</label><input type="text" id="projectName"></div>
+                        <div class="form-group"><label>Link</label><input type="url" id="projectLink"></div>
+                    </div>
+                    <div class="form-group"><label>Açıklama</label><textarea id="projectDesc"></textarea></div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Kullanılan Dil / Araç</label><input type="text" id="projectLang"></div>
+                        <div class="form-group"><label>Görsel URL</label><input type="url" id="projectImage"></div>
+                    </div>
+                    <button class="btn" onclick="saveProject()" id="saveProjectBtn">💾 Projeyi Kaydet</button>
+                    <button class="btn btn-secondary" onclick="clearProjectForm()" style="margin-top:0.5rem;">✖ Temizle</button>
+                </div>
+            </div>
+          `;
+          break;
+        case 'experience':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+                <label style="font-size:0.95rem; color:var(--admin-text);">💼 Deneyimler</label>
+                <div id="expListContainer"></div>
+                <div style="background:var(--input-bg); border:1px solid var(--admin-border); border-radius:var(--radius-md); padding:1.25rem; margin-top:0.5rem;">
+                    <input type="hidden" id="editingExpIndex" value="-1">
+                    <div class="form-grid">
+                        <div class="form-group"><label>Pozisyon</label><input type="text" id="expTitle"></div>
+                        <div class="form-group"><label>Şirket</label><input type="text" id="expCompany"></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Başlangıç (Örn: 2021)</label><input type="text" id="expStart"></div>
+                        <div class="form-group"><label>Bitiş (Örn: Devam)</label><input type="text" id="expEnd"></div>
+                    </div>
+                    <div class="form-group"><label>Açıklama</label><textarea id="expDesc"></textarea></div>
+                    <button class="btn" onclick="saveExperience()" id="saveExpBtn">💾 Deneyimi Kaydet</button>
+                    <button class="btn btn-secondary" onclick="clearExpForm()" style="margin-top:0.5rem;">✖ Temizle</button>
+                </div>
+            </div>
+          `;
+          break;
+        case 'certificates':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+              <label style="font-size:0.95rem; color:var(--admin-text);">📜 Sertifikalar</label>
+              <div id="certListContainer"></div>
+              <div style="background:var(--input-bg); border:1px solid var(--admin-border); border-radius:var(--radius-md); padding:1.25rem; margin-top:0.5rem;">
+                <input type="hidden" id="editingCertIndex" value="-1">
+                <div class="form-grid">
+                  <div class="form-group"><label>Sertifika Adı</label><input type="text" id="certTitle"></div>
+                  <div class="form-group"><label>Veren Kurum</label><input type="text" id="certIssuer"></div>
+                </div>
+                <div class="form-grid">
+                  <div class="form-group"><label>Tarih</label><input type="text" id="certDate" placeholder="Örn: 2024"></div>
+                  <div class="form-group"><label>Sertifika URL</label><input type="url" id="certLink" placeholder="https://..."></div>
+                </div>
+                <button class="btn" onclick="saveCertificate()" id="saveCertBtn">💾 Sertifikayı Kaydet</button>
+                <button class="btn btn-secondary" onclick="clearCertForm()" style="margin-top:0.5rem;">✖ Temizle</button>
+              </div>
+            </div>
+          `;
+          break;
+        case 'contact':
+          html += `
+            <div class="form-group" style="margin-top:1.5rem;">
+              <label>📧 İletişim E-Posta Adresin</label>
+              <input type="email" id="contactEmail" placeholder="ornek@mail.com" oninput="updateCMS()">
+              <p style="font-size:0.7rem; color:var(--admin-muted); margin-top:0.4rem;">İletişim formunun çalışabilmesi için gereklidir.</p>
+            </div>
+          `;
+          break;
+        case 'footer':
+          html += `
+            <div class="form-group" style="margin-top:2rem; border-top:1px solid var(--admin-border); padding-top:1.5rem;">
+              <label style="font-size:0.95rem; color:var(--admin-text);">⚖️ Politikalar</label>
+              <div class="form-group"><label>Gizlilik Politikası</label><textarea id="privacyPolicy" oninput="updateCMS()" placeholder="Gizlilik politikanı buraya yaz..."></textarea></div>
+              <div class="form-group"><label>Kullanım Koşulları</label><textarea id="termsOfService" oninput="updateCMS()" placeholder="Kullanım koşullarını buraya yaz..."></textarea></div>
+            </div>
+          `;
+          break;
+      }
+    });
+    container.innerHTML = html;
+    initUIValues();
+  }
+
+  function renderSkillsTags() { 
+    const container = document.getElementById('skillsTagsContainer');
+    if (!container) return;
+    container.innerHTML = cmsData.content.skills.map((s, i) => `<div class="tag-pill">${escapeHTML(s)}<span onclick="removeSkillTag(${i})">✕</span></div>`).join(''); 
+  }
+  function addSkillTag() { const input = document.getElementById('newSkillInput'), val = input.value.trim(); if (val && !cmsData.content.skills.includes(val)) { cmsData.content.skills.push(val); input.value = ''; renderSkillsTags(); updateCMS(); } }
+  function removeSkillTag(i) { cmsData.content.skills.splice(i, 1); renderSkillsTags(); updateCMS(); }
+
+  function handleAvatarUpload(event) { 
+    const file = event.target.files[0]; 
+    if (file) { 
+        const reader = new FileReader(); 
+        reader.onload = function(e) { 
+            cmsData.profile.avatar = e.target.result; 
+            document.getElementById('avatarPreview').src = e.target.result; 
+            updateCMS(); 
+        }; 
+        reader.readAsDataURL(file); 
+    } 
+  }
+
+  function getSocialIcon(p) { const icons = { github:'🐙', linkedin:'💼', twitter:'🐦', instagram:'📷', youtube:'▶️', website:'🌐' }; return icons[p] || '🔗'; }
+  function renderSocialList() { 
+    const container = document.getElementById('socialListContainer');
+    if (!container) return;
+    container.innerHTML = cmsData.content.socials.map((s, i) => `<div class="list-item"><span>${getSocialIcon(s.platform)} ${escapeHTML(s.platform)}</span><div class="list-actions"><button onclick="editSocial(${i})">✏️</button><button class="delete-btn" onclick="deleteSocial(${i})">🗑️</button></div></div>`).join(''); 
+  }
+  function addSocial() { const platform = document.getElementById('socialPlatform').value, url = document.getElementById('socialUrl').value.trim(); if (!url) return alert('URL gerekli!'); cmsData.content.socials.push({ platform, url }); document.getElementById('socialUrl').value = ''; renderSocialList(); updateCMS(); }
+  function editSocial(i) { const s = cmsData.content.socials[i]; document.getElementById('socialPlatform').value = s.platform; document.getElementById('socialUrl').value = s.url; cmsData.content.socials.splice(i, 1); renderSocialList(); updateCMS(); }
+  function deleteSocial(i) { if(confirm('Silinecek, emin misin?')) { cmsData.content.socials.splice(i, 1); renderSocialList(); updateCMS(); } }
+
+  function renderStatList() { 
+    const container = document.getElementById('statListContainer');
+    if (!container) return;
+    container.innerHTML = cmsData.content.stats.map((s, i) => `<div class="list-item"><span>📊 ${escapeHTML(s.value)} - ${escapeHTML(s.label)}</span><div class="list-actions"><button onclick="editStat(${i})">✏️</button><button class="delete-btn" onclick="deleteStat(${i})">🗑️</button></div></div>`).join(''); 
+  }
+  function clearStatForm() { document.getElementById('editingStatIndex').value="-1"; document.getElementById('statValue').value=''; document.getElementById('statLabel').value=''; document.getElementById('saveStatBtn').innerText='💾 Kaydet'; }
+  function editStat(i) { const s = cmsData.content.stats[i]; document.getElementById('editingStatIndex').value = i; document.getElementById('statValue').value = s.value; document.getElementById('statLabel').value = s.label; document.getElementById('saveStatBtn').innerText = '✏️ Güncelle'; }
+  function saveStat() { const index = parseInt(document.getElementById('editingStatIndex').value); const stat = { value: document.getElementById('statValue').value.trim(), label: document.getElementById('statLabel').value.trim() }; if (!stat.value || !stat.label) return alert('Değer ve etiket zorunlu!'); if (index >= 0 && index < cmsData.content.stats.length) cmsData.content.stats[index] = stat; else cmsData.content.stats.push(stat); clearStatForm(); renderStatList(); updateCMS(); }
+  function deleteStat(i) { if(confirm('Silinecek, emin misin?')) { cmsData.content.stats.splice(i, 1); renderStatList(); updateCMS(); } }
+
+  function renderProjectList() { 
+    const container = document.getElementById('projectListContainer');
+    if (!container) return;
+    container.innerHTML = cmsData.content.projects.map((p, i) => `<div class="list-item"><span>📂 ${escapeHTML(p.name)}</span><div class="list-actions"><button onclick="editProject(${i})">✏️</button><button class="delete-btn" onclick="deleteProject(${i})">🗑️</button></div></div>`).join(''); 
+  }
+  function clearProjectForm() { document.getElementById('editingProjectIndex').value="-1"; document.getElementById('projectName').value=''; document.getElementById('projectLink').value=''; document.getElementById('projectDesc').value=''; document.getElementById('projectLang').value=''; document.getElementById('projectImage').value=''; document.getElementById('saveProjectBtn').innerText='💾 Projeyi Kaydet'; }
+  function editProject(i) { const p=cmsData.content.projects[i]; document.getElementById('editingProjectIndex').value=i; document.getElementById('projectName').value=p.name; document.getElementById('projectLink').value=p.link||''; document.getElementById('projectDesc').value=p.desc; document.getElementById('projectLang').value=p.lang; document.getElementById('projectImage').value=p.image||''; document.getElementById('saveProjectBtn').innerText='✏️ Güncelle'; }
+  function saveProject() { const index=parseInt(document.getElementById('editingProjectIndex').value); const project={name:document.getElementById('projectName').value.trim(),link:document.getElementById('projectLink').value.trim(),desc:document.getElementById('projectDesc').value.trim(),lang:document.getElementById('projectLang').value.trim(),image:document.getElementById('projectImage').value.trim()}; if(!project.name)return alert('Proje adı zorunlu!'); if(index>=0&&index<cmsData.content.projects.length)cmsData.content.projects[index]=project; else cmsData.content.projects.push(project); clearProjectForm(); renderProjectList(); updateCMS(); }
+  function deleteProject(i) { if(confirm('Silinecek, emin misin?')){cmsData.content.projects.splice(i,1); renderProjectList(); updateCMS();} }
+
+  function renderExpList() { 
+    const container = document.getElementById('expListContainer');
+    if (!container) return;
+    container.innerHTML = cmsData.content.experiences.map((e,i)=>`<div class="list-item"><span>💼 ${escapeHTML(e.title)} @ ${escapeHTML(e.company)}</span><div class="list-actions"><button onclick="editExperience(${i})">✏️</button><button class="delete-btn" onclick="deleteExperience(${i})">🗑️</button></div></div>`).join(''); 
+  }
+  function clearExpForm() { document.getElementById('editingExpIndex').value="-1"; document.getElementById('expTitle').value=''; document.getElementById('expCompany').value=''; document.getElementById('expStart').value=''; document.getElementById('expEnd').value=''; document.getElementById('expDesc').value=''; document.getElementById('saveExpBtn').innerText='💾 Deneyimi Kaydet'; }
+  function editExperience(i) { const e=cmsData.content.experiences[i]; document.getElementById('editingExpIndex').value=i; document.getElementById('expTitle').value=e.title; document.getElementById('expCompany').value=e.company; document.getElementById('expStart').value=e.startDate; document.getElementById('expEnd').value=e.endDate; document.getElementById('expDesc').value=e.description; document.getElementById('saveExpBtn').innerText='✏️ Güncelle'; }
+  function saveExperience() { const index=parseInt(document.getElementById('editingExpIndex').value); const exp={title:document.getElementById('expTitle').value.trim(),company:document.getElementById('expCompany').value.trim(),startDate:document.getElementById('expStart').value.trim(),endDate:document.getElementById('expEnd').value.trim(),description:document.getElementById('expDesc').value.trim()}; if(!exp.title||!exp.company)return alert('Pozisyon ve şirket zorunlu!'); if(index>=0&&index<cmsData.content.experiences.length)cmsData.content.experiences[index]=exp; else cmsData.content.experiences.push(exp); clearExpForm(); renderExpList(); updateCMS(); }
+  function deleteExperience(i) { if(confirm('Silinecek, emin misin?')){cmsData.content.experiences.splice(i,1); renderExpList(); updateCMS();} }
+
+  function renderCertList() { 
+    const container = document.getElementById('certListContainer');
+    if (!container) return;
+    container.innerHTML = cmsData.content.certificates.map((c, i) => `<div class="list-item"><span>📜 ${escapeHTML(c.title)}</span><div class="list-actions"><button onclick="editCertificate(${i})">✏️</button><button class="delete-btn" onclick="deleteCertificate(${i})">🗑️</button></div></div>`).join(''); 
+  }
+  function clearCertForm() { document.getElementById('editingCertIndex').value="-1"; document.getElementById('certTitle').value=''; document.getElementById('certIssuer').value=''; document.getElementById('certDate').value=''; document.getElementById('certLink').value=''; document.getElementById('saveCertBtn').innerText='💾 Sertifikayı Kaydet'; }
+  function editCertificate(i) { const c = cmsData.content.certificates[i]; document.getElementById('editingCertIndex').value = i; document.getElementById('certTitle').value = c.title; document.getElementById('certIssuer').value = c.issuer; document.getElementById('certDate').value = c.date || ''; document.getElementById('certLink').value = c.link || ''; document.getElementById('saveCertBtn').innerText = '✏️ Güncelle'; }
+  function saveCertificate() { const index = parseInt(document.getElementById('editingCertIndex').value); const cert = { title: document.getElementById('certTitle').value.trim(), issuer: document.getElementById('certIssuer').value.trim(), date: document.getElementById('certDate').value.trim(), link: document.getElementById('certLink').value.trim() }; if (!cert.title || !cert.issuer) return alert('Sertifika adı ve kurum zorunlu!'); if (index >= 0 && index < cmsData.content.certificates.length) cmsData.content.certificates[index] = cert; else cmsData.content.certificates.push(cert); clearCertForm(); renderCertList(); updateCMS(); }
+  function deleteCertificate(i) { if(confirm('Silinecek, emin misin?')) { cmsData.content.certificates.splice(i, 1); renderCertList(); updateCMS(); } }
+
+  function applyPreset() {
+    const p = document.getElementById('presetSelect').value;
+    const presets={
+      'cyber':{font:'Fira Code',bgColor:'#050505',cardColor:'#121212',accentColor:'#00ff66',textColor:'#ffffff',sectionSpacing:'3.5rem'},
+      'light':{font:'Inter',bgColor:'#f8fafc',cardColor:'#ffffff',accentColor:'#2563eb',textColor:'#0f172a',sectionSpacing:'3.5rem'},
+      'ocean':{font:'Poppins',bgColor:'#0c1929',cardColor:'#132238',accentColor:'#0ea5e9',textColor:'#e2f0fb',sectionSpacing:'3.5rem'},
+      'sunset':{font:'Space Grotesk',bgColor:'#1a0f14',cardColor:'#2d1a23',accentColor:'#f97316',textColor:'#fce7e7',sectionSpacing:'3.5rem'},
+      'forest':{font:'Inter',bgColor:'#0a1f0f',cardColor:'#132a18',accentColor:'#22c55e',textColor:'#d1fae5',sectionSpacing:'3.5rem'},
+      'glass-dark':{font:'Plus Jakarta Sans',bgColor:'#030712',cardColor:'#0b0f19',accentColor:'#38bdf8',textColor:'#f9fafb',sectionSpacing:'3.5rem'}
+    };
+    cmsData.design = presets[p] || presets['glass-dark'];
+    document.getElementById('bgColor').value=cmsData.design.bgColor; document.getElementById('cardColor').value=cmsData.design.cardColor;
+    document.getElementById('accentColor').value=cmsData.design.accentColor; document.getElementById('textColor').value=cmsData.design.textColor;
+    document.getElementById('fontSelect').value=cmsData.design.font; document.getElementById('sectionSpacing').value=cmsData.design.sectionSpacing;
+    updateCMS();
+  }
+
+  function toggleAdminTheme() { document.body.classList.toggle('admin-light'); }
+
+  function initUIValues() {
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    setVal('fullName', cmsData.content.fullName || '');
+    setVal('userTitle', cmsData.content.title || '');
+    setVal('userBio', cmsData.content.bio || '');
+    setVal('contactEmail', cmsData.content.contactEmail || '');
+    setVal('privacyPolicy', cmsData.content.privacyPolicy || '');
+    setVal('termsOfService', cmsData.content.termsOfService || '');
+    setVal('fontSelect', cmsData.design.font || 'Plus Jakarta Sans');
+    setVal('bgColor', cmsData.design.bgColor || '#030712');
+    setVal('cardColor', cmsData.design.cardColor || '#0b0f19');
+    setVal('accentColor', cmsData.design.accentColor || '#38bdf8');
+    setVal('textColor', cmsData.design.textColor || '#f9fafb');
+    setVal('sectionSpacing', cmsData.design.sectionSpacing || '3.5rem');
+    
+    const avatarEl = document.getElementById('avatarPreview');
+    if (avatarEl) avatarEl.src = cmsData.profile.avatar || '';
+    
+    renderSkillsTags(); renderBlockListUI(); renderSocialList(); renderStatList(); renderProjectList(); renderExpList(); renderCertList();
+  }
+
+  function updateCMS() {
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+    cmsData.content.fullName = getVal('fullName');
+    cmsData.content.title = getVal('userTitle');
+    cmsData.content.bio = getVal('userBio');
+    cmsData.content.contactEmail = getVal('contactEmail');
+    cmsData.content.privacyPolicy = getVal('privacyPolicy');
+    cmsData.content.termsOfService = getVal('termsOfService');
+    cmsData.design.font = getVal('fontSelect');
+    cmsData.design.bgColor = getVal('bgColor');
+    cmsData.design.cardColor = getVal('cardColor');
+    cmsData.design.accentColor = getVal('accentColor');
+    cmsData.design.textColor = getVal('textColor');
+    cmsData.design.sectionSpacing = getVal('sectionSpacing');
+    addChangeLogEntry('İçerik/tema güncellendi');
+    saveToLocalStorage(); 
+    renderIframe();
+  }
+
+  function compileFullHTML() {
+    const d = cmsData.design, c = cmsData.content;
+    const spacing = d.sectionSpacing || '3.5rem';
+    
+    const blocksHTML = cmsData.sectionOrder.map(item => {
+      if (!item.active) return '';
+      
+      if (item.id === 'hero') return `<header style="margin-bottom:${spacing}; text-align:start;"><img src="${escapeHTML(cmsData.profile.avatar)}" class="avatar" alt="Avatar"><h1 style="font-size:clamp(2rem, 5vw, 3.5rem);font-weight:800;letter-spacing:-1px;margin-bottom:0.5rem;">${escapeHTML(c.fullName)}</h1><div style="font-size:1.25rem;color:var(--accent);font-weight:600;">${escapeHTML(c.title)}</div><p style="margin-top:1.2rem;color:var(--text-muted);font-size:1.1rem;max-width:100%;margin-inline:auto;">${escapeHTML(c.bio).replace(/\n/g, '<br>')}</p></header>`;
+      
+      if (item.id === 'social') return `<section style="margin-bottom:${spacing}; display:flex; gap:1.25rem; justify-content:start; flex-wrap:wrap;">${c.socials.map(s => `<a href="${escapeHTML(s.url)}" target="_blank" style="color:var(--text); background:var(--card-bg); border:1px solid rgba(255,255,255,0.1); width:45px; height:45px; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:1.2rem; transition:all 0.3s; text-decoration:none;" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.color='var(--text)'; this.style.transform='translateY(0)';" title="${escapeHTML(s.platform)}">${getSocialIcon(s.platform)}</a>`).join('')}</section>`;
+      
+      if (item.id === 'stats') return `<section style="margin-bottom:${spacing};"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;text-align:center;">${c.stats.map(s => `<div class="glass-card"><div style="font-size:2rem;font-weight:800;color:var(--accent);">${escapeHTML(s.value)}</div><div style="font-size:0.9rem;color:var(--text-muted);margin-top:0.3rem;font-weight:500;">${escapeHTML(s.label)}</div></div>`).join('')}</div></section>`;
+      
+      if (item.id === 'skills') return `<section style="margin-bottom:${spacing};"><h3 class="section-title">Yetenekler</h3><div style="display:flex;flex-wrap:wrap;gap:0.75rem;">${c.skills.map(s => `<span class="badge">${escapeHTML(s)}</span>`).join('')}</div></section>`;
+      
+      if (item.id === 'projects') return `<section style="margin-bottom:${spacing};"><h3 class="section-title">Projeler</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;">${c.projects.map((p, idx) => `<div class="glass-card flex-col">${p.image ? `<img src="${escapeHTML(p.image)}" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:1rem;" alt="Project">` : ''}<h4 style="font-size:1.2rem;">${escapeHTML(p.name)}</h4><p style="color:var(--text-muted);margin:0.8rem 0; flex:1; font-size:0.95rem;">${escapeHTML(p.desc)}</p><button class="link-btn" onclick="openProjectModal(${idx})">Projeyi İncele &rarr;</button></div>`).join('')}</div></section>`;
+      
+      if (item.id === 'experience') return `<section style="margin-bottom:${spacing};"><h3 class="section-title">Deneyimler</h3><div style="border-left:2px solid var(--accent); padding-left:2rem; position:relative;">${c.experiences.map(e => `<div style="margin-bottom:2.5rem; position:relative;"><div style="position:absolute; left:-2.4rem; top:0; width:14px; height:14px; background:var(--accent); border-radius:50%; box-shadow: 0 0 0 4px var(--bg);"></div><h4 style="font-size:1.1rem; margin-bottom:0.25rem;">${escapeHTML(e.title)} <span style="color:var(--accent);">@ ${escapeHTML(e.company)}</span></h4><p style="font-size:0.85rem; color:var(--text-muted); font-weight:600; margin-bottom:0.75rem;">${escapeHTML(e.startDate)} - ${escapeHTML(e.endDate)}</p><p style="color:var(--text-muted); line-height:1.6;">${escapeHTML(e.description).replace(/\n/g, '<br>')}</p></div>`).join('')}</div></section>`;
+      
+      if (item.id === 'certificates') return `<section style="margin-bottom:${spacing};"><h3 class="section-title">Sertifikalar</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;">${c.certificates.map(cert => `<div class="glass-card"><h4>${escapeHTML(cert.title)}</h4><p style="color:var(--accent);font-size:0.85rem;margin-top:0.4rem;font-weight:600;">${escapeHTML(cert.issuer)} ${cert.date ? '• ' + escapeHTML(cert.date) : ''}</p>${cert.link ? `<a href="${escapeHTML(cert.link)}" target="_blank" class="link-btn" style="display:inline-block;margin-top:1rem;">Sertifikayı Gör &rarr;</a>` : ''}</div>`).join('')}</div></section>`;
+      
+      if (item.id === 'contact') return `<section style="margin-bottom:${spacing};"><h3 class="section-title">İletişim</h3><form class="glass-card" id="contactForm" onsubmit="handleContactSubmit(event)"><div style="display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));"><input type="text" name="name" placeholder="Adınız" required /><input type="email" name="email" placeholder="E-posta adresiniz" required /></div><textarea name="message" placeholder="Mesajınız..." required></textarea><button type="submit" class="submit-btn">Mesaj Gönder</button></form></section>`;
+      
+      if (item.id === 'footer') return `<footer style="margin-top:${spacing}; padding:2.5rem 0; border-top:1px solid rgba(255,255,255,0.1); text-align:center; font-size:0.9rem; color:var(--text-muted);"><p>© ${new Date().getFullYear()} ${escapeHTML(c.fullName)}. Tüm hakları saklıdır.</p><div style="margin-top:1rem; display:flex; gap:1.5rem; justify-content:center; flex-wrap:wrap;"><button onclick="openPolicyModal('privacy')" style="background:none;border:none;color:var(--accent);font-weight:600;cursor:pointer;font-family:inherit;font-size:0.9rem;">Gizlilik Politikası</button><button onclick="openPolicyModal('terms')" style="background:none;border:none;color:var(--accent);font-weight:600;cursor:pointer;font-family:inherit;font-size:0.9rem;">Kullanım Koşulları</button></div></footer>`;
+      
+      return '';
+    }).join('');
+
+    const safeClose = `</scr${''}ipt>`;
+    const safeProjectsJSON = JSON.stringify(c.projects).replace(/</g, '\\u003c');
+    
+    return `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${escapeHTML(cmsData.seo.title)}</title><meta name="description" content="${escapeHTML(cmsData.seo.desc)}"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${d.font.replace(/\s+/g,'+')}:wght@300;400;500;600;700;800&display=swap"><style>:root { --bg: ${d.bgColor}; --card-bg: ${d.cardColor}; --accent: ${d.accentColor}; --text: ${d.textColor}; --text-muted: rgba(255,255,255,0.7); } * { box-sizing:border-box; margin:0; padding:0; font-family:'${d.font}',sans-serif; } body { background-color:var(--bg); color:var(--text); padding:4rem 1.5rem; line-height:1.7; } .container { max-width:850px; margin:0 auto; } .section-title { font-size:1.5rem; margin-bottom:1.5rem; font-weight:800; letter-spacing:-0.5px; } .glass-card { background:var(--card-bg); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:2rem; transition:transform 0.3s, border-color 0.3s; } .glass-card:hover { border-color:var(--accent); transform:translateY(-4px); } .flex-col { display:flex; flex-direction:column; } .avatar { width:110px; height:110px; border-radius:50%; object-fit:cover; border:4px solid var(--accent); margin-bottom:1.5rem; box-shadow:0 0 20px rgba(0,0,0,0.5); } .badge { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:0.6rem 1.2rem; border-radius:100px; font-size:0.9rem; font-weight:600; transition:border-color 0.3s; } .badge:hover { border-color:var(--accent); } input, textarea { width:100%; padding:1rem 1.25rem; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:12px; margin-bottom:1.25rem; font-size:0.95rem; transition:border-color 0.3s; } input:focus, textarea:focus { outline:none; border-color:var(--accent); } button.submit-btn { background:var(--accent); color:#000; font-weight:800; border:none; padding:1rem 2.5rem; border-radius:12px; cursor:pointer; font-size:1rem; transition:opacity 0.3s; } button.submit-btn:hover { opacity:0.9; } button.submit-btn:disabled { opacity:0.5; cursor:not-allowed; } .link-btn { background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; font-size:0.95rem; text-decoration:none; display:inline-flex; align-items:center; } .link-btn:hover { text-decoration:underline; } .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: none; justify-content:center; align-items:center; z-index:1000; opacity:0; transition:opacity 0.3s; } .modal-overlay.open { display:flex; opacity:1; } .modal-content { background: var(--card-bg); border:1px solid rgba(255,255,255,0.15); border-radius:24px; padding:2.5rem; width:90vw; max-width:650px; max-height:85vh; overflow-y:auto; position:relative; color:var(--text); transform:translateY(20px); transition:transform 0.3s; } .modal-overlay.open .modal-content { transform:translateY(0); } .modal-close { position:absolute; top:1.5rem; right:1.5rem; background:rgba(255,255,255,0.1); border:none; color:var(--text); width:36px; height:36px; border-radius:50%; font-size:1.5rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.3s; } .modal-close:hover { background:var(--accent); color:#000; } .modal-btn { display:inline-block; background:var(--accent); color:#000; font-weight:800; text-decoration:none; padding:0.85rem 1.8rem; border-radius:12px; margin-top:1rem; transition:opacity 0.3s; } .modal-btn:hover { opacity:0.9; } @media (max-width:640px){ .modal-content { width:100vw; height:100vh; max-height:100vh; border-radius:0; padding:2rem 1.5rem; } } ${cmsData.customCSS}</style></head><body><div class="container">${blocksHTML}</div><div id="projectModal" class="modal-overlay"><div class="modal-content"><button class="modal-close" onclick="closeProjectModal()">&times;</button><h2 id="modalProjectName" style="font-size:1.8rem;margin-bottom:1.5rem;font-weight:800;letter-spacing:-0.5px;"></h2><img id="modalProjectImage" src="" style="width:100%;max-height:350px;object-fit:cover;border-radius:16px;margin-bottom:1.5rem;display:none;" alt="Project Image"><div id="modalProjectDesc" style="color:var(--text-muted);margin-bottom:1.5rem;line-height:1.7;font-size:1.05rem;"></div><div style="display:flex;gap:1rem;margin-bottom:1.5rem;"><span class="badge" id="modalProjectLang"></span></div><a id="modalProjectLink" href="#" target="_blank" class="modal-btn" style="display:none;">Projeyi Ziyaret Et &rarr;</a></div></div><div id="policyModal" class="modal-overlay"><div class="modal-content"><button class="modal-close" onclick="closePolicyModal()">&times;</button><h2 id="policyModalTitle" style="font-size:1.8rem;margin-bottom:1.5rem;font-weight:800;"></h2><div id="policyModalBody" style="color:var(--text-muted); line-height:1.7; white-space:pre-wrap;"></div></div></div><script>const projectsData = ${safeProjectsJSON};const contactEmail = "${escapeHTML(c.contactEmail || '')}";const privacyText = ${JSON.stringify(c.privacyPolicy || '')};const termsText = ${JSON.stringify(c.termsOfService || '')};function openProjectModal(i) { let p = projectsData[i]; if(!p) return; document.getElementById('modalProjectName').innerText = p.name; document.getElementById('modalProjectDesc').innerText = p.desc; document.getElementById('modalProjectLang').innerText = p.lang || '—'; let img = document.getElementById('modalProjectImage'); if(p.image) { img.src = p.image; img.style.display = 'block'; } else { img.style.display = 'none'; } let link = document.getElementById('modalProjectLink'); if(p.link) { link.href = p.link; link.style.display = 'inline-block'; } else { link.style.display = 'none'; } document.getElementById('projectModal').classList.add('open'); document.body.style.overflow = 'hidden'; } function closeProjectModal() { document.getElementById('projectModal').classList.remove('open'); document.body.style.overflow = ''; } document.getElementById('projectModal').addEventListener('click', function(e) { if(e.target === this) closeProjectModal(); }); function handleContactSubmit(e) { e.preventDefault(); let form = e.target; let name = form.name.value.trim(); let email = form.email.value.trim(); let message = form.message.value.trim(); if(contactEmail) { let bodyText = 'Ad: ' + name + '\\nE-posta: ' + email + '\\n\\nMesaj:\\n' + message; window.location.href = 'mailto:' + contactEmail + '?subject=İletişim Formu Mesajı&body=' + encodeURIComponent(bodyText); } else { alert('Site sahibi e-posta adresi tanımlamadığı için mesaj gönderilemiyor.'); } } function openPolicyModal(type) { let title = document.getElementById('policyModalTitle'); let body = document.getElementById('policyModalBody'); if(type === 'privacy') { title.innerText = 'Gizlilik Politikası'; body.innerText = privacyText || 'Henüz gizlilik politikası eklenmedi.'; } else { title.innerText = 'Kullanım Koşulları'; body.innerText = termsText || 'Henüz kullanım koşulları eklenmedi.'; } document.getElementById('policyModal').classList.add('open'); document.body.style.overflow = 'hidden'; } function closePolicyModal() { document.getElementById('policyModal').classList.remove('open'); document.body.style.overflow = ''; } document.getElementById('policyModal').addEventListener('click', function(e) { if(e.target === this) closePolicyModal(); }); document.addEventListener('DOMContentLoaded', function() { var submitBtn = document.querySelector('#contactForm .submit-btn'); if(submitBtn && !contactEmail) { submitBtn.disabled = true; submitBtn.innerText = "Kurulum Yapılmadı"; } });${safeClose}${cmsData.customJS ? '<script>'+cmsData.customJS+safeClose : ''}</body></html>`;
+  }
+
+  function renderIframe() { 
+    const iframe = document.getElementById('cmsPreview'); 
+    iframe.srcdoc = compileFullHTML();
+  }
+
+  function refreshCodeView() { 
+    document.getElementById('sourceCodeView').innerText = compileFullHTML(); 
+    renderChangeLog(); 
+  }
+  function copySourceCode() { navigator.clipboard.writeText(compileFullHTML()).then(()=>alert('✅ HTML başarıyla kopyalandı!')).catch(()=>alert('❌ Kopyalama başarısız.')); }
+  function renderChangeLog() {
+    const container = document.getElementById('changeLogContainer');
+    container.innerHTML = cmsData.changeLog.length === 0 ? '<div class="log-item">Henüz değişiklik yapılmadı.</div>' : cmsData.changeLog.map(log => `<div class="log-item"><span>${log.time}</span> - ${escapeHTML(log.action)}</div>`).join('');
+  }
+
+  function exportJSONBackup() { const dataStr="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(cmsData,null,2)); const a=document.createElement('a'); a.href=dataStr; a.download="portfolio-yedek.json"; a.click(); }
+  function importJSONBackup(event) { 
+    const file=event.target.files[0]; 
+    if(file){
+        const reader=new FileReader(); 
+        reader.onload = function(e){
+            try { 
+                cmsData=JSON.parse(e.target.result); 
+                ensureDataIntegrity(); 
+                renderContentSections();
+                initUIValues(); 
+                updateCMS(); 
+                alert("✅ Yedek başarıyla yüklendi!"); 
+            } catch(err) { alert("❌ Hatalı dosya formatı!"); }
+        }; 
+        reader.readAsText(file);
+    } 
+  }
+  function resetCMSData() { if(confirm("Tüm veriler KALICI OLARAK sıfırlanacak. Emin misin?")){localStorage.removeItem('cms_data'); location.reload();} }
+
+  function downloadCVPDF() {
+    const c = cmsData.content, d = cmsData.design;
+    const cvHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CV - ${escapeHTML(c.fullName)}</title><style>body { font-family: '${d.font}', sans-serif; color: #1f2937; line-height: 1.6; padding: 0; margin: 0; background: #fff; } .page { max-width: 800px; margin: 0 auto; padding: 40px; background: #fff; } .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; } h1 { font-size: 2.5rem; margin: 0; color: #111827; letter-spacing: -0.5px; } h2 { font-size: 1.25rem; color: #4f46e5; margin: 5px 0 15px 0; font-weight: 600; } .contact-info { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; font-size: 0.9rem; color: #4b5563; } .section { margin-bottom: 25px; } .section-title { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 15px; font-weight: 700; } .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .item { margin-bottom: 15px; } .item-title { font-weight: 700; color: #111827; display: flex; justify-content: space-between; } .item-subtitle { color: #4f46e5; font-size: 0.9rem; margin-bottom: 5px; font-weight: 500; } .item-desc { font-size: 0.9rem; color: #4b5563; } .badge { background: #f3f4f6; color: #374151; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; display: inline-block; margin: 0 5px 5px 0; border: 1px solid #e5e7eb; } @media print { body { background: #fff; } .page { padding: 0; width: 100%; max-width: 100%; } }</style></head><body><div class="page"><div class="header"><h1>${escapeHTML(c.fullName)}</h1><h2>${escapeHTML(c.title)}</h2><div class="contact-info">${c.contactEmail ? `<span>📧 ${escapeHTML(c.contactEmail)}</span>` : ''}${c.socials.map(s => `<span>${escapeHTML(s.platform)}: ${escapeHTML(s.url)}</span>`).join(' | ')}</div><p style="margin-top:15px; font-size:0.95rem; color:#4b5563; text-align:justify;">${escapeHTML(c.bio)}</p></div>${c.skills.length > 0 ? `<div class="section"><div class="section-title">Yetenekler & Uzmanlıklar</div><div>${c.skills.map(s => `<span class="badge">${escapeHTML(s)}</span>`).join('')}</div></div>` : ''}${c.experiences.length > 0 ? `<div class="section"><div class="section-title">İş Deneyimi</div>${c.experiences.map(e => `<div class="item"><div class="item-title"><span>${escapeHTML(e.title)}</span> <span>${escapeHTML(e.startDate)} - ${escapeHTML(e.endDate)}</span></div><div class="item-subtitle">${escapeHTML(e.company)}</div><div class="item-desc">${escapeHTML(e.description)}</div></div>`).join('')}</div>` : ''}${c.projects.length > 0 ? `<div class="section"><div class="section-title">Önemli Projeler</div>${c.projects.map(p => `<div class="item"><div class="item-title">${escapeHTML(p.name)} <span style="font-weight:normal; font-size:0.85rem; color:#6b7280;">(${escapeHTML(p.lang)})</span></div>${p.link ? `<div class="item-subtitle" style="font-size:0.8rem;">${escapeHTML(p.link)}</div>` : ''}<div class="item-desc">${escapeHTML(p.desc)}</div></div>`).join('')}</div>` : ''}${c.certificates.length > 0 ? `<div class="section"><div class="section-title">Sertifikalar ve Eğitimler</div><div class="grid-2">${c.certificates.map(cert => `<div class="item" style="margin-bottom:10px;"><div style="font-weight:600; color:#111827;">${escapeHTML(cert.title)}</div><div style="font-size:0.85rem; color:#4b5563;">${escapeHTML(cert.issuer)} ${cert.date ? ' (' + escapeHTML(cert.date) + ')' : ''}</div></div>`).join('')}</div></div>` : ''}</div></body></html>`;
+    const w = window.open('', '_blank'); w.document.write(cvHTML); w.document.close(); setTimeout(() => { w.print(); }, 500);
+  }
+
+  async function downloadZipPackage() {
+    if (typeof JSZip === 'undefined') return alert("JSZip kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.");
+    try {
+        const zip = new JSZip(); 
+        zip.file("index.html", compileFullHTML());
+        zip.file("manifest.json", JSON.stringify({ name: cmsData.seo.title, short_name: cmsData.content.fullName, start_url: "./index.html", display: "standalone", background_color: cmsData.design.bgColor, theme_color: cmsData.design.accentColor, icons: [{ src: cmsData.profile.avatar, sizes: "192x192", type: "image/png" }] }, null, 2));
+        const blob = await zip.generateAsync({ type: "blob" }); 
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "portfolio-paket.zip"; a.click();
+    } catch(e) { alert("Zip oluşturulurken bir hata oluştu."); }
+  }
+
+  async function deployToGH() {
+    const token = document.getElementById('ghToken').value.trim();
+    const user = document.getElementById('ghUser').value.trim();
+    const log = document.getElementById('logArea');
+    if(!token || !user) return alert("Token ve Kullanıcı adı gereklidir!");
+    log.innerHTML = "<span style='color:var(--admin-accent)'>⏳ GitHub ile iletişim kuruluyor...</span>";
+    try {
+      const repo = `${user}.github.io`;
+      const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+      const repoCheck = await fetch('https://api.github.com/user/repos', { method: 'POST', headers, body: JSON.stringify({ name: repo, auto_init: true }) });
+      if(!repoCheck.ok && repoCheck.status !== 422) throw new Error("Repo oluşturulamadı.");
+      const html = compileFullHTML();
+      const contentBase64 = btoa(unescape(encodeURIComponent(html)));
+      let sha = "";
+      const gf = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/index.html`, { headers });
+      if(gf.ok) sha = (await gf.json()).sha;
+      const upload = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/index.html`, { method: 'PUT', headers, body: JSON.stringify({ message: "Portfolio CMS ile güncellendi", content: contentBase64, sha: sha || undefined }) });
+      if(!upload.ok) throw new Error("Dosya yüklenemedi!");
+      log.innerHTML = `<span style='color:#10b981'>✅ Başarıyla Yayında!<br><a href="https://${user}.github.io" target="_blank" style="color:#10b981; text-decoration:underline;">https://${user}.github.io</a></span>`;
+    } catch(e) { log.innerHTML = `<span style='color:#f43f5e'>❌ Hata: ${e.message}</span>`; }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    initResizerEngine(); loadFromLocalStorage(); renderContentSections(); initUIValues(); renderIframe();
+  });
+</script>
+</body>
+</html>
