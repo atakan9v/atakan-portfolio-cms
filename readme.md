@@ -1,4 +1,4 @@
-# 🚀 atakan-portfolio-cms
+# 🚀 atakan-portfolio-cms (BETA)
 
 **Kod yazmadan, sürükle-bırak ile portfolyo sitesi oluşturma paneli.**
 
